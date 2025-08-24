@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Arcade Hub — Roblox-lite</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1020"/>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Arcade Hub — Roblox-lite</h1>
+    <div class="controls">
+      <button id="installBtn" class="btn">Install</button>
+      <button id="darkBtn" class="btn">Dark</button>
+    </div>
+  </header>
+  <main class="container">
+    <section class="profile card">
+      <div style="display:flex;gap:8px"><button id="exportSave" class="game-btn">Export Save</button><input type="file" id="importSave" /></div>
+      <div><strong id="playerName">Player</strong></div>
+      <div id="wallet">Koin: <span id="coins">1000</span></div>
+      <div>Level: <span id="level">1</span></div>
+    </section>
+
+    <section class="games card">
+      <h2>Games</h2>
+      <div class="grid">
+        <button class="game-btn" data-game="slot">🎰 Slot</button>
+        <button class="game-btn" data-game="snake">🐍 Snake</button>
+        <button class="game-btn" data-game="blackjack">🃏 Blackjack</button>
+        <button class="game-btn" data-game="creator">🛠️ Creator Mode</button>
+      </div>
+    </section>
+
+    <section class="card" id="gameArea">
+      <h2 id="gameTitle">Welcome</h2>
+      <div id="gameFrame" class="game-frame">
+        <p>Choose a game from the hub. Games run client-side and offline.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Community</h2>
+      <p>Saved creations (local):</p>
+      <ul id="creations"></ul>
+    </section>
+  </main>
+
+  <footer class="footer">Arcade Hub — Offline PWA demo. Built for learning.</footer>
+
+  <script src="lib/idb-keyval.min.js"></script>
+  <script src="hub.js"></script>
+  <script src="sw-register.js"></script>
+
+<script>
+  // Export/import save (all localStorage + creations) as JSON file
+  document.getElementById('exportSave').addEventListener('click', async ()=>{
+    const keys = Object.keys(localStorage);
+    const obj = {};
+    keys.forEach(k=>obj[k]=localStorage.getItem(k));
+    // include IndexedDB creations via idbKeyval.keys/get
+    const ks = await idbKeyval.keys();
+    const creations = {};
+    for(const k of ks){ creations[k]=await idbKeyval.get(k); }
+    const payload = { locals: obj, creations };
+    const blob = new Blob([JSON.stringify(payload)],{type:'application/json'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='arcade-save-'+Date.now()+'.json'; a.click();
+  });
+  document.getElementById('importSave').addEventListener('change', async (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    const txt = await f.text(); try{
+      const payload = JSON.parse(txt);
+      Object.entries(payload.locals||{}).forEach(([k,v])=>localStorage.setItem(k,v));
+      for(const [k,v] of Object.entries(payload.creations||{})){ await idbKeyval.set(k,v); }
+      alert('Imported save. Reload page to apply.');
+    }catch(e){ alert('Import failed'); }
+  });
+</script>
+</body>
+</html>
